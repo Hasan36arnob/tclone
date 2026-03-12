@@ -43,10 +43,15 @@ export default function SignupCard() {
 				},
 				body: JSON.stringify(inputs),
 			});
-			const data = await res.json();
+			let data = null;
+			try {
+				data = await res.json();
+			} catch {
+				// If the server crashes / returns non-JSON, don't crash the UI.
+			}
 
-			if (data.error) {
-				showToast("Error", data.error, "error");
+			if (!res.ok || data?.error) {
+				showToast("Error", data?.error || `Request failed (${res.status})`, "error");
 				return;
 			}
 

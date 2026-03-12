@@ -6,9 +6,19 @@ const useShowToast = () => {
 
 	const showToast = useCallback(
 		(title, description, status) => {
+			const safeDescription =
+				description instanceof Error
+					? description.message
+					: typeof description === "string"
+						? description
+						: description == null
+							? ""
+							: typeof description === "object"
+								? JSON.stringify(description)
+								: String(description);
 			toast({
 				title,
-				description,
+				description: safeDescription,
 				status,
 				duration: 3000,
 				isClosable: true,

@@ -12,7 +12,10 @@ import job from "./cron/cron.js";
 
 dotenv.config();
 
-connectDB();
+connectDB().catch((err) => {
+	console.error("MongoDB connection failed. API requests will error until it's fixed.");
+	console.error(err?.message || err);
+});
 job.start();
 
 const PORT = process.env.PORT || 5000;
