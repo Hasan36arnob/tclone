@@ -18,6 +18,7 @@ function App() {
 		<Box position={"relative"} w='full'>
 			<Container maxW={pathname === "/" ? { base: "620px", md: "900px" } : "620px"}>
 				<Header />
+				{user && pathname !== "/auth" && <CreatePost />}
 				<Routes>
 					<Route path='/' element={user ? <HomePage /> : <Navigate to='/auth' />} />
 					<Route path='/auth' element={!user ? <AuthPage /> : <Navigate to='/' />} />
@@ -26,14 +27,7 @@ function App() {
 					<Route
 						path='/:username'
 						element={
-							user ? (
-								<>
-									<UserPage />
-									<CreatePost />
-								</>
-							) : (
-								<UserPage />
-							)
+							<UserPage />
 						}
 					/>
 					<Route path='/:username/post/:pid' element={<PostPage />} />

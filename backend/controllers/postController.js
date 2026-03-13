@@ -6,6 +6,7 @@ const createPost = async (req, res) => {
 	try {
 		const { postedBy, text } = req.body;
 		let { img } = req.body;
+		let mediaType = undefined;
 
 		if (!postedBy || !text) {
 			return res.status(400).json({ error: "Postedby and text fields are required" });
@@ -25,12 +26,24 @@ const createPost = async (req, res) => {
 			return res.status(400).json({ error: `Text must be less than ${maxLength} characters` });
 		}
 
-		if (img) {
-			const uploadedResponse = await cloudinary.uploader.upload(img);
+		// Prefer multipart media uploads (supports video) but keep base64 image support for compatibility.
+		if (req.file) {
+			const uploadResult = await new Promise((resolve, reject) => {
+				const stream = cloudinary.uploader.upload_stream({ resource_type: "auto" }, (error, result) => {
+					if (error) return reject(error);
+					return resolve(result);
+				});
+				stream.end(req.file.buffer);
+			});
+			img = uploadResult.secure_url;
+			mediaType = uploadResult.resource_type === "video" ? "video" : "image";
+		} else if (img) {
+			const uploadedResponse = await cloudinary.uploader.upload(img, { resource_type: "image" });
 			img = uploadedResponse.secure_url;
+			mediaType = "image";
 		}
 
-		const newPost = new Post({ postedBy, text, img });
+		const newPost = new Post({ postedBy, text, img, mediaType });
 		await newPost.save();
 
 		res.status(201).json(newPost);
@@ -143,8 +156,9 @@ const getFeedPosts = async (req, res) => {
 		}
 
 		const following = user.following;
+		const followingPlusSelf = [...following, userId];
 
-		const feedPosts = await Post.find({ postedBy: { $in: following } }).sort({ createdAt: -1 });
+		const feedPosts = await Post.find({ postedBy: { $in: followingPlusSelf } }).sort({ createdAt: -1 });
 
 		res.status(200).json(feedPosts);
 	} catch (err) {

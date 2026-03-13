@@ -96,7 +96,11 @@ const PostPage = () => {
 
 			{currentPost.img && (
 				<Box borderRadius={6} overflow={"hidden"} border={"1px solid"} borderColor={"gray.light"}>
-					<Image src={currentPost.img} w={"full"} />
+					{currentPost.mediaType === "video" ? (
+						<Box as='video' src={currentPost.img} controls style={{ width: "100%" }} />
+					) : (
+						<Image src={currentPost.img} w={"full"} />
+					)}
 				</Box>
 			)}
 

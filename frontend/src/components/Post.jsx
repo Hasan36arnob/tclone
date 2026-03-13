@@ -138,7 +138,11 @@ const Post = ({ post, postedBy }) => {
 					<Text fontSize={"sm"}>{post.text}</Text>
 					{post.img && (
 						<Box borderRadius={6} overflow={"hidden"} border={"1px solid"} borderColor={"gray.light"}>
-							<Image src={post.img} w={"full"} />
+							{post.mediaType === "video" ? (
+								<Box as='video' src={post.img} controls style={{ width: "100%" }} />
+							) : (
+								<Image src={post.img} w={"full"} />
+							)}
 						</Box>
 					)}
 

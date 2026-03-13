@@ -14,6 +14,10 @@ const postSchema = mongoose.Schema(
 		img: {
 			type: String,
 		},
+		mediaType: {
+			type: String,
+			enum: ["image", "video"],
+		},
 		likes: {
 			// array of user ids
 			type: [mongoose.Schema.Types.ObjectId],

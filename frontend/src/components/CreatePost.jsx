@@ -25,21 +25,23 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import useShowToast from "../hooks/useShowToast";
 import postsAtom from "../atoms/postsAtom";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 
 const MAX_CHAR = 500;
 
 const CreatePost = () => {
 	const { isOpen, onOpen, onClose } = useDisclosure();
 	const [postText, setPostText] = useState("");
-	const { handleImageChange, imgUrl, setImgUrl } = usePreviewImg();
 	const imageRef = useRef(null);
+	const [mediaFile, setMediaFile] = useState(null);
+	const [mediaPreviewUrl, setMediaPreviewUrl] = useState(null);
 	const [remainingChar, setRemainingChar] = useState(MAX_CHAR);
 	const user = useRecoilValue(userAtom);
 	const showToast = useShowToast();
 	const [loading, setLoading] = useState(false);
 	const [posts, setPosts] = useRecoilState(postsAtom);
 	const { username } = useParams();
+	const { pathname } = useLocation();
 
 	const handleTextChange = (e) => {
 		const inputText = e.target.value;
@@ -57,13 +59,12 @@ const CreatePost = () => {
 	const handleCreatePost = async () => {
 		setLoading(true);
 		try {
-			const res = await fetch("/api/posts/create", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({ postedBy: user._id, text: postText, img: imgUrl }),
-			});
+			const form = new FormData();
+			form.append("postedBy", user._id);
+			form.append("text", postText);
+			if (mediaFile) form.append("media", mediaFile);
+
+			const res = await fetch("/api/posts/create", { method: "POST", body: form });
 
 			const data = await res.json();
 			if (data.error) {
@@ -71,17 +72,42 @@ const CreatePost = () => {
 				return;
 			}
 			showToast("Success", "Post created successfully", "success");
-			if (username === user.username) {
+			if (pathname === "/" || username === user.username) {
 				setPosts([data, ...posts]);
 			}
 			onClose();
 			setPostText("");
-			setImgUrl("");
+			if (mediaPreviewUrl) URL.revokeObjectURL(mediaPreviewUrl);
+			setMediaPreviewUrl(null);
+			setMediaFile(null);
 		} catch (error) {
 			showToast("Error", error, "error");
 		} finally {
 			setLoading(false);
 		}
+	};
+
+	const handleMediaChange = (e) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+
+		const isImage = file.type.startsWith("image/");
+		const isVideo = file.type.startsWith("video/");
+		if (!isImage && !isVideo) {
+			showToast("Invalid file type", "Please select an image or video file", "error");
+			return;
+		}
+
+		// Keep it simple: 25MB cap for dev to avoid giant payloads.
+		const maxBytes = 25 * 1024 * 1024;
+		if (file.size > maxBytes) {
+			showToast("File too large", "Please choose a file under 25MB", "error");
+			return;
+		}
+
+		if (mediaPreviewUrl) URL.revokeObjectURL(mediaPreviewUrl);
+		setMediaFile(file);
+		setMediaPreviewUrl(URL.createObjectURL(file));
 	};
 
 	return (
@@ -114,7 +140,13 @@ const CreatePost = () => {
 								{remainingChar}/{MAX_CHAR}
 							</Text>
 
-							<Input type='file' hidden ref={imageRef} onChange={handleImageChange} />
+							<Input
+								type='file'
+								hidden
+								ref={imageRef}
+								accept='image/*,video/*'
+								onChange={handleMediaChange}
+							/>
 
 							<BsFillImageFill
 								style={{ marginLeft: "5px", cursor: "pointer" }}
@@ -123,12 +155,18 @@ const CreatePost = () => {
 							/>
 						</FormControl>
 
-						{imgUrl && (
+						{mediaPreviewUrl && (
 							<Flex mt={5} w={"full"} position={"relative"}>
-								<Image src={imgUrl} alt='Selected img' />
+								{mediaFile?.type?.startsWith("video/") ? (
+									<Box as='video' src={mediaPreviewUrl} controls style={{ width: "100%", borderRadius: 8 }} />
+								) : (
+									<Image src={mediaPreviewUrl} alt='Selected media' />
+								)}
 								<CloseButton
 									onClick={() => {
-										setImgUrl("");
+										if (mediaPreviewUrl) URL.revokeObjectURL(mediaPreviewUrl);
+										setMediaPreviewUrl(null);
+										setMediaFile(null);
 									}}
 									bg={"gray.800"}
 									position={"absolute"}
