@@ -117,9 +117,12 @@ const CreatePost = () => {
 				position={"fixed"}
 				bottom={10}
 				right={5}
-				bg={useColorModeValue("gray.300", "gray.dark")}
+				bg={useColorModeValue("green.500", "green.600")}
+				color={"white"}
+				_hover={{ bg: useColorModeValue("green.600", "green.700") }}
 				onClick={onOpen}
 				size={{ base: "sm", sm: "md" }}
+				borderRadius={"full"}
 			>
 				<AddIcon />
 			</Button>

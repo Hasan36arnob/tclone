@@ -59,7 +59,7 @@ export default function LoginCard() {
 			<Stack spacing={8} mx={"auto"} maxW={"lg"} py={12} px={6}>
 				<Stack align={"center"}>
 					<Heading fontSize={"4xl"} textAlign={"center"}>
-						Login
+						Welcome Back
 					</Heading>
 				</Stack>
 				<Box
@@ -101,7 +101,7 @@ export default function LoginCard() {
 						</FormControl>
 						<Stack spacing={10} pt={2}>
 							<Button
-								loadingText='Logging in'
+								loadingText='Assalamu Alaikum...'
 								size='lg'
 								bg={useColorModeValue("gray.600", "gray.700")}
 								color={"white"}
