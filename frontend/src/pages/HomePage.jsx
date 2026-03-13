@@ -1,4 +1,4 @@
-import { Box, Flex, Spinner } from "@chakra-ui/react";
+import { Box, Button, Flex, Heading, Spinner, Text, useColorModeValue } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import useShowToast from "../hooks/useShowToast";
 import Post from "../components/Post";
@@ -32,10 +32,33 @@ const HomePage = () => {
 		getFeedPosts();
 	}, [showToast, setPosts]);
 
+	const cardBg = useColorModeValue("white", "gray.dark");
+	const cardBorder = useColorModeValue("blackAlpha.100", "whiteAlpha.200");
+
 	return (
 		<Flex gap='10' alignItems={"flex-start"}>
 			<Box flex={70}>
-				{!loading && posts.length === 0 && <h1>Follow some users to see the feed</h1>}
+				{!loading && posts.length === 0 && (
+					<Box
+						bg={cardBg}
+						borderWidth='1px'
+						borderColor={cardBorder}
+						borderRadius='2xl'
+						p={8}
+						textAlign='center'
+						mb={6}
+					>
+						<Heading size='md' mb={2}>
+							Your feed is quiet
+						</Heading>
+						<Text fontSize='sm' color='gray.light' mb={4}>
+							Follow a few people to start seeing posts here.
+						</Text>
+						<Button size='sm' variant='solid'>
+							Explore suggested users
+						</Button>
+					</Box>
+				)}
 
 				{loading && (
 					<Flex justify='center'>

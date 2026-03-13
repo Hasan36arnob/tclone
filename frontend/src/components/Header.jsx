@@ -1,4 +1,4 @@
-import { Button, Flex, Image, Link, useColorMode } from "@chakra-ui/react";
+import { Box, Button, Flex, Image, Link, useColorMode, useColorModeValue } from "@chakra-ui/react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
 import { AiFillHome } from "react-icons/ai";
@@ -16,8 +16,22 @@ const Header = () => {
 	const logout = useLogout();
 	const setAuthScreen = useSetRecoilState(authScreenAtom);
 
+	const barBg = useColorModeValue("white", "blackAlpha.800");
+	const barBorder = useColorModeValue("blackAlpha.100", "whiteAlpha.200");
+
 	return (
-		<Flex justifyContent={"space-between"} mt={6} mb='12'>
+		<Box
+			mt={4}
+			mb={8}
+			borderBottomWidth='1px'
+			borderColor={barBorder}
+			position='sticky'
+			top={0}
+			zIndex={10}
+			bg={barBg}
+			backdropFilter='blur(8px)'
+		>
+		<Flex justifyContent={"space-between"} alignItems="center" py={3}>
 			{user && (
 				<Link as={RouterLink} to='/'>
 					<AiFillHome size={24} />
@@ -32,7 +46,7 @@ const Header = () => {
 			<Image
 				cursor={"pointer"}
 				alt='logo'
-				w={6}
+				w={7}
 				src={colorMode === "dark" ? "/light-logo.svg" : "/dark-logo.svg"}
 				onClick={toggleColorMode}
 			/>
@@ -48,8 +62,8 @@ const Header = () => {
 					<Link as={RouterLink} to={`/settings`}>
 						<MdOutlineSettings size={20} />
 					</Link>
-					<Button size={"xs"} onClick={logout}>
-						<FiLogOut size={20} />
+					<Button size={"xs"} variant="outline" onClick={logout}>
+						<FiLogOut size={16} />
 					</Button>
 				</Flex>
 			)}
@@ -60,6 +74,7 @@ const Header = () => {
 				</Link>
 			)}
 		</Flex>
+		</Box>
 	);
 };
 
