@@ -2,14 +2,16 @@ import { Box, Button, Flex, Heading, Spinner, Text, useColorModeValue } from "@c
 import { useEffect, useState } from "react";
 import useShowToast from "../hooks/useShowToast";
 import Post from "../components/Post";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useSetRecoilState } from "recoil";
 import postsAtom from "../atoms/postsAtom";
+import userAtom from "../atoms/userAtom";
 import SuggestedUsers from "../components/SuggestedUsers";
 
 const HomePage = () => {
 	const [posts, setPosts] = useRecoilState(postsAtom);
 	const [loading, setLoading] = useState(true);
 	const showToast = useShowToast();
+	const setUser = useSetRecoilState(userAtom);
 	useEffect(() => {
 		const getFeedPosts = async () => {
 			setLoading(true);
@@ -18,6 +20,12 @@ const HomePage = () => {
 				const res = await fetch("/api/posts/feed");
 				const data = await res.json();
 				if (data.error) {
+					if (res.status === 401 || data.error.includes("Unauthorized")) {
+						localStorage.removeItem("user-threads");
+						setUser(null);
+						showToast("Session Expired", "Please log in again.", "error");
+						return;
+					}
 					showToast("Error", data.error, "error");
 					return;
 				}
