@@ -1,24 +1,50 @@
-// এইটা হচ্ছে কনভার্সেশন মডেল (কথোপকথনগুলো কোথায় রাখবো)
+// এইটা হচ্ছে কনভার্সেশন মডেল (কথোপকথনগুলো কোথায় রাখবো)
 import Conversation from "../models/conversationModel.js";
-// এইটা হচ্ছে মেসেজ মডেল (মেসেজগুলো কোথায় রাখবো)
+// এইটা হচ্ছে মেসেজ মডেল (মেসেজগুলো কোথায় রাখবো)
 import Message from "../models/messageModel.js";
-// এইটা দিয়ে রিয়েল টাইমে মেসেজ পাঠানো যায়
+// এইটা দিয়ে রিয়েল টাইমে মেসেজ পাঠানো যায়
 import { getRecipientSocketId, io } from "../socket/socket.js";
-// এইটা দিয়ে ছবি ক্লাউডে আপলোড করা যায়
+// এইটা দিয়ে ছবি ক্লাউডে আপলোড করা যায়
 import { v2 as cloudinary } from "cloudinary";
 
+// ============= ইনপুট স্যানিটাইজেশন হেল্পার =============
+const sanitizeInput = (input) => {
+	if (typeof input !== 'string') return input;
+	return input.trim().replace(/[<>]/g, '');
+};
+
 // ============= মেসেজ পাঠানোর ফাংশন =============
-// এই ফাংশন কাজ করে যখন কেউ মেসেজ পাঠায়
+// এই ফাংশন কাজ করে যখন কেউ মেসেজ পাঠায়
 async function sendMessage(req, res) {
 	try {
-		// ইউজার যা পাঠিয়েছে সেগুলো নিচ্ছি
+		// ইউজার যা পাঠিয়েছে সেগুলো নিচ্ছি
 		// recipientId = কার কাছে পাঠাবে
 		// message = কি লেখা আছে
-		const { recipientId, message } = req.body;
+		let { recipientId, message } = req.body;
 		// img = ছবি থাকলে সেটাও নিচ্ছি (না-ও থাকতে পারে)
 		let { img } = req.body;
 		// senderId = যে মেসেজ পাঠাচ্ছে (লগইন করা ইউজার)
 		const senderId = req.user._id;
+
+		// Sanitize message input
+		if (message) {
+			message = sanitizeInput(message);
+		}
+
+		// Validate required fields
+		if (!recipientId || !message) {
+			return res.status(400).json({ error: "Recipient ID and message are required" });
+		}
+
+		// Validate message length
+		if (message.length > 5000) {
+			return res.status(400).json({ error: "Message must be less than 5000 characters" });
+		}
+
+		// Validate recipientId format
+		if (recipientId.length !== 24) {
+			return res.status(400).json({ error: "Invalid recipient ID" });
+		}
 
 		// খুঁজে দেখি এই দুইজনের মধ্যে আগে থেকে কোনো কথোপকথন আছে কিনা
 		// participants = যারা এই কথোপকথনে অংশ নিচ্ছে
@@ -43,11 +69,17 @@ async function sendMessage(req, res) {
 			await conversation.save();
 		}
 
-		// যদি ইউজার ছবি দিয়ে থাকে
+		// যদি ইউজার ছবি দিয়ে থাকে
 		if (img) {
+			// Validate base64 image size (approximate)
+			const base64Size = (img.length * 3) / 4;
+			if (base64Size > 10 * 1024 * 1024) {
+				return res.status(400).json({ error: "Image size must be less than 10MB" });
+			}
+
 			// ছবিটাকে ক্লাউডিনারিতে আপলোড করি
 			const uploadedResponse = await cloudinary.uploader.upload(img);
-			// আপলোড হওয়া ছবির লিংকটা নিই
+			// আপলোড হওয়া ছবির লিংকটা নিই
 			img = uploadedResponse.secure_url;
 		}
 
@@ -55,7 +87,7 @@ async function sendMessage(req, res) {
 		const newMessage = new Message({
 			// এই মেসেজ কোন কথোপকথনের জন্য
 			conversationId: conversation._id,
-			// কে পাঠিয়েছে
+			// কে পাঠিয়েছে
 			sender: senderId,
 			// মেসেজে কি লেখা আছে
 			text: message,
@@ -63,7 +95,7 @@ async function sendMessage(req, res) {
 			img: img || "",
 		});
 
-		// দুইটা কাজ একসাথে করবো (যাতে দ্রুত হয়)
+		// দুইটা কাজ একসাথে করবো (যাতে দ্রুত হয়)
 		await Promise.all([
 			// কাজ ১: নতুন মেসেজটা ডাটাবেজে সংরক্ষণ করি
 			newMessage.save(),
@@ -80,38 +112,44 @@ async function sendMessage(req, res) {
 		const recipientSocketId = getRecipientSocketId(recipientId);
 		// যদি অনলাইনে থাকে
 		if (recipientSocketId) {
-			// তাহলে সাথে সাথেই ওর কাছে মেসেজটা পৌঁছে দিই (রিয়েল টাইমে)
+			// তাহলে সাথে সাথেই ওর কাছে মেসেজটা পৌঁছে দিই (রিয়েল টাইমে)
 			io.to(recipientSocketId).emit("newMessage", newMessage);
 		}
 
 		// সবকিছু ঠিক থাকলে সফল মেসেজটা রিটার্ন করি
 		res.status(201).json(newMessage);
 	} catch (error) {
-		// যদি কোনো সমস্যা হয়, তাহলে error মেসেজ দেখাই
-		res.status(500).json({ error: error.message });
+		// যদি কোনো সমস্যা হয়, তাহলে error মেসেজ দেখাই
+		res.status(500).json({ error: "Internal server error" });
+		console.error("Error in sendMessage:", error.message);
 	}
 }
 
 // ============= মেসেজগুলো দেখার ফাংশন =============
-// এই ফাংশন কাজ করে যখন কেউ পুরনো মেসেজ দেখতে চায়
+// এই ফাংশন কাজ করে যখন কেউ পুরনো মেসেজ দেখতে চায়
 async function getMessages(req, res) {
 	// URL থেকে অন্য ইউজারের আইডি নিচ্ছি (যার সাথে কথা বলেছিল)
 	const { otherUserId } = req.params;
 	// বর্তমান ইউজারের আইডি (লগইন করা ইউজার)
 	const userId = req.user._id;
 	try {
+		// Validate otherUserId format
+		if (!otherUserId || otherUserId.length !== 24) {
+			return res.status(400).json({ error: "Invalid user ID" });
+		}
+
 		// এই দুইজনের মধ্যে কথোপকথন খুঁজি
 		const conversation = await Conversation.findOne({
 			participants: { $all: [userId, otherUserId] },
 		});
 
-		// যদি কথোপকথনই না পাওয়া যায়
+		// যদি কথোপকথনই না পাওয়া যায়
 		if (!conversation) {
-			// তাহলে বলি "কথোপকথন পাওয়া যায়নি"
+			// তাহলে বলি "কথোপকথন পাওয়া যায়নি"
 			return res.status(404).json({ error: "Conversation not found" });
 		}
 
-		// যদি কথোপকথন পাওয়া যায়, তাহলে ওই কথোপকথনের সব মেসেজ খুঁজি
+		// যদি কথোপকথন পাওয়া যায়, তাহলে ওই কথোপকথনের সব মেসেজ খুঁজি
 		const messages = await Message.find({
 			conversationId: conversation._id,
 			// createdAt 1 মানে পুরনোটা আগে, নতুনটা পরে (যেমনটা দেখানো উচিত)
@@ -121,12 +159,13 @@ async function getMessages(req, res) {
 		res.status(200).json(messages);
 	} catch (error) {
 		// কোনো সমস্যা হলে error দেখাই
-		res.status(500).json({ error: error.message });
+		res.status(500).json({ error: "Internal server error" });
+		console.error("Error in getMessages:", error.message);
 	}
 }
 
 // ============= সব কথোপকথন দেখার ফাংশন =============
-// এই ফাংশন কাজ করে যখন কেউ দেখতে চায় কার সাথে কার সাথে কথা বলেছে
+// এই ফাংশন কাজ করে যখন কেউ দেখতে চায় কার সাথে কার সাথে কথা বলেছে
 async function getConversations(req, res) {
 	// বর্তমান ইউজারের আইডি (লগইন করা ইউজার)
 	const userId = req.user._id;
@@ -141,7 +180,7 @@ async function getConversations(req, res) {
 
 		// প্রতিটি কথোপকথনের জন্য
 		conversations.forEach((conversation) => {
-			// participants লিস্ট থেকে বর্তমান ইউজারকে বাদ দিয়ে দিই
+			// participants লিস্ট থেকে বর্তমান ইউজারকে বাদ দিয়ে দিই
 			// কারণ নিজের নাম দেখানোর দরকার নেই
 			conversation.participants = conversation.participants.filter(
 				(participant) => participant._id.toString() !== userId.toString()
@@ -151,9 +190,10 @@ async function getConversations(req, res) {
 		res.status(200).json(conversations);
 	} catch (error) {
 		// কোনো সমস্যা হলে error দেখাই
-		res.status(500).json({ error: error.message });
+		res.status(500).json({ error: "Internal server error" });
+		console.error("Error in getConversations:", error.message);
 	}
 }
 
-// এই তিনটা ফাংশন অন্য জায়গায় ব্যবহার করার জন্য export করি
+// এই তিনটা ফাংশন অন্য জায়গায় ব্যবহার করার জন্য export করি
 export { sendMessage, getMessages, getConversations };

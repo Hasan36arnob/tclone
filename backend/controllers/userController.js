@@ -1,8 +1,8 @@
-// ইউজার মডেল আনা হচ্ছে (ইউজারের তথ্য কোথায় রাখবো)
+// ইউজার মডেল আনা হচ্ছে (ইউজারের তথ্য কোথায় রাখবো)
 import User from "../models/userModel.js";
-// পোস্ট মডেল আনা হচ্ছে (পোস্টগুলো কোথায় রাখবো)
+// পোস্ট মডেল আনা হচ্ছে (পোস্টগুলো কোথায় রাখবো)
 import Post from "../models/postModel.js";
-// bcrypt আনা হচ্ছে (পাসওয়ার্ড এনক্রিপ্ট করার জন্য)
+// bcrypt আনা হচ্ছে (পাসওয়ার্ড এনক্রিপ্ট করার জন্য)
 import bcrypt from "bcryptjs";
 // টোকেন জেনারেট করার ফাংশন আনা হচ্ছে
 import generateTokenAndSetCookie from "../utils/helpers/generateTokenAndSetCookie.js";
@@ -11,35 +11,64 @@ import { v2 as cloudinary } from "cloudinary";
 // mongoose আনা হচ্ছে (আইডি চেক করার জন্য)
 import mongoose from "mongoose";
 
+// ============= ইনপুট ভ্যালিডেশন হেল্পার ফাংশন =============
+const validateEmail = (email) => {
+	const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+	return emailRegex.test(email);
+};
+
+const validateUsername = (username) => {
+	// Username: 3-20 characters, alphanumeric and underscores only
+	const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+	return usernameRegex.test(username);
+};
+
+const validatePassword = (password) => {
+	// Password: minimum 6 characters
+	return password && password.length >= 6;
+};
+
+const sanitizeInput = (input) => {
+	if (typeof input !== 'string') return input;
+	return input.trim().replace(/[<>]/g, '');
+};
+
 // ============= ইউজারের প্রোফাইল দেখার ফাংশন =============
-// এই ফাংশন কাজ করে যখন কেউ কারো প্রোফাইল দেখতে চায়
+// এই ফাংশন কাজ করে যখন কেউ কারো প্রোফাইল দেখতে চায়
 const getUserProfile = async (req, res) => {
 	// URL থেকে ইউজারনেম অথবা আইডি নিচ্ছি
 	const { query } = req.params;
 
 	try {
-		let user;
-
-		// যদি query টা একটা valid আইডি হয় (মঙ্গোডিবির আইডি ফরম্যাটে)
-		if (mongoose.Types.ObjectId.isValid(query)) {
-			// তাহলে আইডি দিয়ে ইউজার খুঁজি
-			// select("-password") মানে পাসওয়ার্ড দেখাবো না
-			// select("-updatedAt") মানে আপডেটের সময় দেখাবো না
-			user = await User.findOne({ _id: query }).select("-password").select("-updatedAt");
-		} else {
-			// না হলে ইউজারনেম দিয়ে ইউজার খুঁজি
-			user = await User.findOne({ username: query }).select("-password").select("-updatedAt");
+		// Sanitize input
+		const sanitizedQuery = sanitizeInput(query);
+		
+		if (!sanitizedQuery) {
+			return res.status(400).json({ error: "Invalid query parameter" });
 		}
 
-		// যদি ইউজার না পাওয়া যায়
+		let user;
+
+		// যদি query টা একটা valid আইডি হয় (মঙ্গোডিবির আইডি ফরম্যাটে)
+		if (mongoose.Types.ObjectId.isValid(sanitizedQuery)) {
+			// তাহলে আইডি দিয়ে ইউজার খুঁজি
+			// select("-password") মানে পাসওয়ার্ড দেখাবো না
+			// select("-updatedAt") মানে আপডেটের সময় দেখাবো না
+			user = await User.findOne({ _id: sanitizedQuery }).select("-password").select("-updatedAt");
+		} else {
+			// না হলে ইউজারনেম দিয়ে ইউজার খুঁজি
+			user = await User.findOne({ username: sanitizedQuery }).select("-password").select("-updatedAt");
+		}
+
+		// যদি ইউজার না পাওয়া যায়
 		if (!user) return res.status(404).json({ error: "User not found" });
 
 		// ইউজারের তথ্য দেখাই
 		res.status(200).json(user);
 	} catch (err) {
 		// কোনো সমস্যা হলে error দেখাই
-		res.status(500).json({ error: err.message });
-		console.log("Error in getUserProfile: ", err.message);
+		res.status(500).json({ error: "Internal server error" });
+		console.error("Error in getUserProfile:", err.message);
 	}
 };
 
@@ -47,10 +76,35 @@ const getUserProfile = async (req, res) => {
 // এই ফাংশন কাজ করে যখন কেউ নতুন অ্যাকাউন্ট তৈরি করে
 const signupUser = async (req, res) => {
 	try {
-		// ইউজার যা দিয়েছে সেগুলো নিচ্ছি
-		const { name, email, username, password } = req.body;
+		// ইউজার যা দিয়েছে সেগুলো নিচ্ছি
+		let { name, email, username, password } = req.body;
 		
-		// দেখি এই ইমেইল বা ইউজারনেম দিয়ে কেউ আগে থেকে আছে কিনা
+		// Sanitize inputs
+		name = sanitizeInput(name);
+		email = sanitizeInput(email);
+		username = sanitizeInput(username);
+		
+		// Validate required fields
+		if (!name || !email || !username || !password) {
+			return res.status(400).json({ error: "All fields are required" });
+		}
+		
+		// Validate email format
+		if (!validateEmail(email)) {
+			return res.status(400).json({ error: "Invalid email format" });
+		}
+		
+		// Validate username format
+		if (!validateUsername(username)) {
+			return res.status(400).json({ error: "Username must be 3-20 characters and contain only letters, numbers, and underscores" });
+		}
+		
+		// Validate password strength
+		if (!validatePassword(password)) {
+			return res.status(400).json({ error: "Password must be at least 6 characters long" });
+		}
+		
+		// দেখি এই ইমেইল বা ইউজারনেম দিয়ে কেউ আগে থেকে আছে কিনা
 		const user = await User.findOne({ $or: [{ email }, { username }] });
 
 		// যদি আগে থেকেই থাকে
@@ -58,9 +112,9 @@ const signupUser = async (req, res) => {
 			return res.status(400).json({ error: "User already exists" });
 		}
 		
-		// পাসওয়ার্ড এনক্রিপ্ট করার জন্য লবণ তৈরি করি
+		// পাসওয়ার্ড এনক্রিপ্ট করার জন্য লবণ তৈরি করি
 		const salt = await bcrypt.genSalt(10);
-		// পাসওয়ার্ড এনক্রিপ্ট করি
+		// পাসওয়ার্ড এনক্রিপ্ট করি
 		const hashedPassword = await bcrypt.hash(password, salt);
 
 		// নতুন ইউজার তৈরি করি
@@ -68,17 +122,17 @@ const signupUser = async (req, res) => {
 			name,
 			email,
 			username,
-			password: hashedPassword, // এনক্রিপ্ট করা পাসওয়ার্ড রাখি
+			password: hashedPassword, // এনক্রিপ্ট করা পাসওয়ার্ড রাখি
 		});
 		// ডাটাবেজে সেভ করি
 		await newUser.save();
 
-		// যদি ইউজার সফলভাবে তৈরি হয়
+		// যদি ইউজার সফলভাবে তৈরি হয়
 		if (newUser) {
-			// টোকেন তৈরি করি এবং কুকিতে সেট করি (লগইন করিয়ে দেই)
+			// টোকেন তৈরি করি এবং কুকিতে সেট করি (লগইন করিয়ে দেই)
 			generateTokenAndSetCookie(newUser._id, res);
 
-			// ইউজারের তথ্য দেখাই (পাসওয়ার্ড ছাড়া)
+			// ইউজারের তথ্য দেখাই (পাসওয়ার্ড ছাড়া)
 			res.status(201).json({
 				_id: newUser._id,
 				name: newUser.name,
@@ -92,8 +146,8 @@ const signupUser = async (req, res) => {
 			res.status(400).json({ error: "Invalid user data" });
 		}
 	} catch (err) {
-		res.status(500).json({ error: err.message });
-		console.log("Error in signupUser: ", err.message);
+		res.status(500).json({ error: "Internal server error" });
+		console.error("Error in signupUser:", err.message);
 	}
 };
 
@@ -101,14 +155,23 @@ const signupUser = async (req, res) => {
 // এই ফাংশন কাজ করে যখন কেউ লগইন করে
 const loginUser = async (req, res) => {
 	try {
-		// ইউজারনেম এবং পাসওয়ার্ড নিচ্ছি
-		const { username, password } = req.body;
-		// ইউজারনেম দিয়ে ইউজার খুঁজি
+		// ইউজারনেম এবং পাসওয়ার্ড নিচ্ছি
+		let { username, password } = req.body;
+		
+		// Sanitize inputs
+		username = sanitizeInput(username);
+		
+		// Validate required fields
+		if (!username || !password) {
+			return res.status(400).json({ error: "Username and password are required" });
+		}
+		
+		// ইউজারনেম দিয়ে ইউজার খুঁজি
 		const user = await User.findOne({ username });
-		// পাসওয়ার্ড মিলছে কিনা চেক করি
+		// পাসওয়ার্ড মিলছে কিনা চেক করি
 		const isPasswordCorrect = await bcrypt.compare(password, user?.password || "");
 
-		// যদি ইউজার না পাওয়া যায় বা পাসওয়ার্ড ভুল হয়
+		// যদি ইউজার না পাওয়া যায় বা পাসওয়ার্ড ভুল হয়
 		if (!user || !isPasswordCorrect) return res.status(400).json({ error: "Invalid username or password" });
 
 		// যদি অ্যাকাউন্ট ফ্রোজেন (বন্ধ) থাকে
@@ -121,7 +184,7 @@ const loginUser = async (req, res) => {
 		// টোকেন তৈরি করি এবং কুকিতে সেট করি
 		generateTokenAndSetCookie(user._id, res);
 
-		// ইউজারের তথ্য দেখাই (পাসওয়ার্ড ছাড়া)
+		// ইউজারের তথ্য দেখাই (পাসওয়ার্ড ছাড়া)
 		res.status(200).json({
 			_id: user._id,
 			name: user.name,
@@ -131,8 +194,8 @@ const loginUser = async (req, res) => {
 			profilePic: user.profilePic,
 		});
 	} catch (error) {
-		res.status(500).json({ error: error.message });
-		console.log("Error in loginUser: ", error.message);
+		res.status(500).json({ error: "Internal server error" });
+		console.error("Error in loginUser:", error.message);
 	}
 };
 
@@ -144,8 +207,8 @@ const logoutUser = (req, res) => {
 		res.cookie("jwt", "", { maxAge: 1 });
 		res.status(200).json({ message: "User logged out successfully" });
 	} catch (err) {
-		res.status(500).json({ error: err.message });
-		console.log("Error in signupUser: ", err.message);
+		res.status(500).json({ error: "Internal server error" });
+		console.error("Error in logoutUser:", err.message);
 	}
 };
 
@@ -155,6 +218,12 @@ const followUnFollowUser = async (req, res) => {
 	try {
 		// URL থেকে যাকে ফলো করবে তার আইডি
 		const { id } = req.params;
+		
+		// Validate ID format
+		if (!mongoose.Types.ObjectId.isValid(id)) {
+			return res.status(400).json({ error: "Invalid user ID" });
+		}
+		
 		// যাকে ফলো করবে সেই ইউজার
 		const userToModify = await User.findById(id);
 		// বর্তমান ইউজার (যে ফলো করছে)
@@ -164,7 +233,7 @@ const followUnFollowUser = async (req, res) => {
 		if (id === req.user._id.toString())
 			return res.status(400).json({ error: "You cannot follow/unfollow yourself" });
 
-		// যদি ইউজার না পাওয়া যায়
+		// যদি ইউজার না পাওয়া যায়
 		if (!userToModify || !currentUser) return res.status(400).json({ error: "User not found" });
 
 		// দেখি বর্তমান ইউজার আগে থেকে ওকে ফলো করে কিনা
@@ -187,37 +256,58 @@ const followUnFollowUser = async (req, res) => {
 			res.status(200).json({ message: "User followed successfully" });
 		}
 	} catch (err) {
-		res.status(500).json({ error: err.message });
-		console.log("Error in followUnFollowUser: ", err.message);
+		res.status(500).json({ error: "Internal server error" });
+		console.error("Error in followUnFollowUser:", err.message);
 	}
 };
 
 // ============= ইউজার আপডেট ফাংশন =============
 // এই ফাংশন কাজ করে যখন কেউ নিজের প্রোফাইল আপডেট করে
 const updateUser = async (req, res) => {
-	// ইউজার যা আপডেট করতে চায় সেগুলো নিচ্ছি
-	const { name, email, username, password, bio } = req.body;
+	// ইউজার যা আপডেট করতে চায় সেগুলো নিচ্ছি
+	let { name, email, username, password, bio } = req.body;
 	let { profilePic } = req.body;
 
 	const userId = req.user._id;
 	try {
 		let user = await User.findById(userId);
-		// যদি ইউজার না পাওয়া যায়
+		// যদি ইউজার না পাওয়া যায়
 		if (!user) return res.status(400).json({ error: "User not found" });
 
 		// কেউ অন্য কারো প্রোফাইল আপডেট করতে পারবে না
 		if (req.params.id !== userId.toString())
 			return res.status(400).json({ error: "You cannot update other user's profile" });
 
-		// যদি নতুন পাসওয়ার্ড দেয়
+		// Sanitize inputs
+		if (name) name = sanitizeInput(name);
+		if (email) email = sanitizeInput(email);
+		if (username) username = sanitizeInput(username);
+		if (bio) bio = sanitizeInput(bio);
+		
+		// Validate email if provided
+		if (email && !validateEmail(email)) {
+			return res.status(400).json({ error: "Invalid email format" });
+		}
+		
+		// Validate username if provided
+		if (username && !validateUsername(username)) {
+			return res.status(400).json({ error: "Username must be 3-20 characters and contain only letters, numbers, and underscores" });
+		}
+		
+		// Validate password if provided
+		if (password && !validatePassword(password)) {
+			return res.status(400).json({ error: "Password must be at least 6 characters long" });
+		}
+
+		// যদি নতুন পাসওয়ার্ড দেয়
 		if (password) {
-			// নতুন পাসওয়ার্ড এনক্রিপ্ট করি
+			// নতুন পাসওয়ার্ড এনক্রিপ্ট করি
 			const salt = await bcrypt.genSalt(10);
 			const hashedPassword = await bcrypt.hash(password, salt);
 			user.password = hashedPassword;
 		}
 
-		// যদি নতুন প্রোফাইল ছবি দেয়
+		// যদি নতুন প্রোফাইল ছবি দেয়
 		if (profilePic) {
 			// আগের প্রোফাইল ছবি থাকলে ক্লাউড থেকে ডিলিট করি
 			if (user.profilePic) {
@@ -229,7 +319,7 @@ const updateUser = async (req, res) => {
 			profilePic = uploadedResponse.secure_url;
 		}
 
-		// নতুন তথ্য দিয়ে আপডেট করি (যা দেয়নি সেটা পুরনো থাকবে)
+		// নতুন তথ্য দিয়ে আপডেট করি (যা দেয়নি সেটা পুরনো থাকবে)
 		user.name = name || user.name;
 		user.email = email || user.email;
 		user.username = username || user.username;
@@ -253,19 +343,19 @@ const updateUser = async (req, res) => {
 			{ arrayFilters: [{ "reply.userId": userId }] } // শুধু এই ইউজারের কমেন্টগুলো আপডেট করো
 		);
 
-		// পাসওয়ার্ড রেসপন্সে দেখাবো না
+		// পাসওয়ার্ড রেসপন্সে দেখাবো না
 		user.password = null;
 
 		// আপডেট করা ইউজারের তথ্য দেখাই
 		res.status(200).json(user);
 	} catch (err) {
-		res.status(500).json({ error: err.message });
-		console.log("Error in updateUser: ", err.message);
+		res.status(500).json({ error: "Internal server error" });
+		console.error("Error in updateUser:", err.message);
 	}
 };
 
 // ============= সাজেস্টেড ইউজার দেখানোর ফাংশন =============
-// এই ফাংশন কাজ করে যখন কাউকে "আপনি যাদের জানেন না" এরকম ইউজার সাজেস্ট করতে হয়
+// এই ফাংশন কাজ করে যখন কাউকে "আপনি যাদের জানেন না" এরকম ইউজার সাজেস্ট করতে হয়
 const getSuggestedUsers = async (req, res) => {
 	try {
 		// বর্তমান ইউজারকে বাদ দিতে হবে
@@ -291,18 +381,19 @@ const getSuggestedUsers = async (req, res) => {
 		// প্রথম ৪ জন সাজেস্ট করো
 		const suggestedUsers = filteredUsers.slice(0, 4);
 
-		// পাসওয়ার্ড দেখাবো না
+		// পাসওয়ার্ড দেখাবো না
 		suggestedUsers.forEach((user) => (user.password = null));
 
 		// সাজেস্টেড ইউজার দেখাই
 		res.status(200).json(suggestedUsers);
 	} catch (error) {
-		res.status(500).json({ error: error.message });
+		res.status(500).json({ error: "Internal server error" });
+		console.error("Error in getSuggestedUsers:", error.message);
 	}
 };
 
 // ============= অ্যাকাউন্ট ফ্রোজেন করার ফাংশন =============
-// এই ফাংশন কাজ করে যখন কেউ নিজের অ্যাকাউন্ট বন্ধ (ফ্রোজেন) করতে চায়
+// এই ফাংশন কাজ করে যখন কেউ নিজের অ্যাকাউন্ট বন্ধ (ফ্রোজেন) করতে চায়
 const freezeAccount = async (req, res) => {
 	try {
 		// বর্তমান ইউজার খুঁজি
@@ -315,14 +406,15 @@ const freezeAccount = async (req, res) => {
 		user.isFrozen = true;
 		await user.save();
 
-		// সফল হয়েছে জানাই
+		// সফল হয়েছে জানাই
 		res.status(200).json({ success: true });
 	} catch (error) {
-		res.status(500).json({ error: error.message });
+		res.status(500).json({ error: "Internal server error" });
+		console.error("Error in freezeAccount:", error.message);
 	}
 };
 
-// সব ফাংশন অন্য জায়গায় ব্যবহারের জন্য export করি
+// সব ফাংশন অন্য জায়গায় ব্যবহারের জন্য export করি
 export {
 	signupUser,
 	loginUser,

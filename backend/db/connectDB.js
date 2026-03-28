@@ -8,24 +8,39 @@ const connectDB = async () => {
 	try {
 		// MongoDB এর সাথে কানেক্ট করি (যেখানে আসল ডাটা রাখবো)
 		// process.env.MONGO_URI হলো ডাটাবেসের ঠিকানা (যেমন: mongodb+srv://...)
-		const conn = await mongoose.connect(process.env.MONGO_URI);
+		const conn = await mongoose.connect(process.env.MONGO_URI, {
+			// Production-ready options
+			maxPoolSize: 10, // Maintain up to 10 socket connections
+			serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+			socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+		});
 		
-		// কানেক্ট হয়ে গেলে কোন হোস্টে কানেক্ট হয়েছে সেটা দেখাই
+		// কানেক্ট হয়ে গেলে কোন হোস্টে কানেক্ট হয়েছে সেটা দেখাই
 		console.log(`MongoDB Connected: ${conn.connection.host}`);
 		
-		// কানেকশনটা রিটার্ন করি (অন্য জায়গায় ব্যবহারের জন্য)
+		// Handle connection events
+		mongoose.connection.on('error', (err) => {
+			console.error('MongoDB connection error:', err);
+		});
+
+		mongoose.connection.on('disconnected', () => {
+			console.log('MongoDB disconnected');
+		});
+
+		// কানেকশনটা রিটার্ন করি (অন্য জায়গায় ব্যবহারের জন্য)
 		return conn;
 		
 	} catch (error) {
-		// যদি এরর হয়, তাহলে এরর মেসেজটা বের করি
+		// যদি এরর হয়, তাহলে এরর মেসেজটা বের করি
 		const message = error?.message || String(error);
 		console.error(`MongoDB connection error: ${message}`);
 
 		// ============= স্মার্ট ফিচার: ব্যাকআপ প্ল্যান =============
-		// যদি আসল ডাটাবেসে কানেক্ট না হয় (ইন্টারনেট না থাকা, সার্ভার ডাউন ইত্যাদি)
-		// আর যদি আমরা ডেভেলপমেন্ট মোডে থাকি (প্রোডাকশন না হয়)
+		// যদি আসল ডাটাবেসে কানেক্ট না হয় (ইন্টারনেট না থাকা, সার্ভার ডাউন ইত্যাদি)
+		// আর যদি আমরা ডেভেলপমেন্ট মোডে থাকি (প্রোডাকশন না হয়)
 		if (process.env.NODE_ENV !== "production") {
 			try {
+				console.log("Attempting to connect to in-memory MongoDB...");
 				// তাহলে মেমরিতে একটা MongoDB সার্ভার তৈরি করি (টেম্পোরারি)
 				const mongoServer = await MongoMemoryServer.create();
 				// সেই সার্ভারের ঠিকানা পাই
@@ -47,5 +62,5 @@ const connectDB = async () => {
 	}
 };
 
-// ফাংশনটা অন্য জায়গায় ব্যবহারের জন্য export করি
+// ফাংশনটা অন্য জায়গায় ব্যবহারের জন্য export করি
 export default connectDB;
