@@ -78,9 +78,6 @@ Edit `.env` with your configuration:
 PORT=5000
 NODE_ENV=development
 
-# MongoDB Connection
-MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority
-
 # JWT Configuration (use a strong, random secret in production)
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 
@@ -183,6 +180,92 @@ When deploying to production, ensure you set these environment variables:
 
 ### Health Check
 - `GET /api/health` - Server health check
+
+## 🧪 Testing
+
+The project includes comprehensive unit and integration tests for both backend and frontend.
+
+### Backend Tests
+
+```bash
+# Run all backend tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+**Test Coverage:**
+- User authentication (signup, login, logout)
+- Post management (create, delete, like, reply)
+- Messaging (send, receive, conversations)
+- Authentication middleware
+- Input validation
+- Error handling
+
+For more details, see [`backend/tests/README.md`](backend/tests/README.md).
+
+### Frontend Tests
+
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Run all frontend tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+**Test Coverage:**
+- Component rendering
+- User interactions
+- Utility functions
+- Form validation
+
+For more details, see [`frontend/TESTING.md`](frontend/TESTING.md).
+
+## 🎨 Frontend
+
+The project includes a complete React frontend with:
+
+- **Chakra UI** for modern, responsive design
+- **Dark/Light mode** toggle
+- **Real-time updates** via Socket.io
+- **Image upload** support
+- **Notification sounds** for messages
+- **Fully responsive** design
+
+### Frontend Structure
+
+```
+frontend/
+├── src/
+│   ├── components/     # React components
+│   ├── pages/          # Page components
+│   ├── hooks/          # Custom React hooks
+│   ├── context/        # React context providers
+│   ├── atoms/          # State management atoms
+│   └── assets/         # Static assets
+├── public/             # Public assets
+└── package.json        # Frontend dependencies
+```
+
+### Frontend Features
+
+- **Authentication Pages**: Login and Signup
+- **Home Page**: Feed of posts from followed users
+- **User Profile**: View and update profile
+- **Post Page**: View individual posts with comments
+- **Chat Page**: Real-time messaging
+- **Settings Page**: Account settings
 
 ## 🛡️ Security Best Practices
 
