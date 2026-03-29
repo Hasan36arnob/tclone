@@ -1,52 +1,84 @@
+// mongoose কে ডাকলাম (MongoDB এর সাথে কথা বলার বন্ধু)
 import mongoose from "mongoose";
 
+// ============= ইউজারের ফর্মটা বানানো হচ্ছে =============
+// userSchema মানে: "একটা ইউজার কেমন হবে সেটার নকশা"
 const userSchema = mongoose.Schema(
 	{
+		// ============= নাম =============
+		// name = ইউজারের পুরো নাম (যেমন: "সালমান খান")
 		name: {
-			type: String,
-			required: true,
+			type: String,      // টেক্সট টাইপের ডাটা
+			required: true,    // দিতেই হবে, না দিলে চলবে না
 		},
+		
+		// ============= ইউজারনেম =============
+		// username = লগইন করার নাম (যেমন: "salmankhan_official")
 		username: {
-			type: String,
-			required: true,
-			unique: true,
+			type: String,      // টেক্সট টাইপের ডাটা
+			required: true,    // দিতেই হবে
+			unique: true,      // এই নাম আর কেউ নিতে পারবে না (এক্সক্লুসিভ)
 		},
+		
+		// ============= ইমেইল =============
+		// email = ইমেইল ঠিকানা (যেমন: "salman@gmail.com")
 		email: {
-			type: String,
-			required: true,
-			unique: true,
+			type: String,      // টেক্সট টাইপের ডাটা
+			required: true,    // দিতেই হবে
+			unique: true,      // এই ইমেইল আর কেউ দিতে পারবে না
 		},
+		
+		// ============= পাসওয়ার্ড =============
+		// password = গোপন কোড (যেমন: "mypassword123")
 		password: {
-			type: String,
-			minLength: 6,
-			required: true,
+			type: String,      // টেক্সট টাইপের ডাটা
+			minLength: 6,      // কমপক্ষে ৬ অক্ষর হতে হবে
+			required: true,    // দিতেই হবে
 		},
+		
+		// ============= প্রোফাইল ছবি =============
+		// profilePic = প্রোফাইলে যে ছবি বসাবে (যেমন: "salman.jpg")
 		profilePic: {
-			type: String,
-			default: "",
+			type: String,      // ছবির লিংক (URL)
+			default: "",       // না দিলে খালি থাকবে
 		},
+		
+		// ============= ফলোয়ার (যারা আমাকে ফলো করে) =============
+		// followers = আমার ভক্তরা কারা কারা?
 		followers: {
-			type: [String],
-			default: [],
+			type: [String],    // স্ট্রিং-এর লিস্ট (যেমন: ["রিয়া", "সীমা"])
+			default: [],       // নতুন হলে কেউ ফলো করে না
 		},
+		
+		// ============= ফলোইং (যাদের আমি ফলো করি) =============
+		// following = আমি কাদের ফলো করি?
 		following: {
-			type: [String],
-			default: [],
+			type: [String],    // স্ট্রিং-এর লিস্ট
+			default: [],       // নতুন হলে কাউকে ফলো করি না
 		},
+		
+		// ============= বায়ো (নিজের পরিচয়) =============
+		// bio = নিজের সম্পর্কে একটু লেখা (যেমন: "আমি অভিনেতা")
 		bio: {
-			type: String,
-			default: "",
+			type: String,      // টেক্সট টাইপের ডাটা
+			default: "",       // না দিলে খালি থাকবে
 		},
+		
+		// ============= অ্যাকাউন্ট জমে গেছে? =============
+		// isFrozen = অ্যাকাউন্ট বন্ধ করে দেওয়া হয়েছে কিনা?
 		isFrozen: {
-			type: Boolean,
-			default: false,
+			type: Boolean,     // true=বন্ধ, false=চালু
+			default: false,    // নতুন অ্যাকাউন্ট চালু থাকে
 		},
 	},
 	{
+		// timestamps মানে: কখন তৈরি আর কখন আপডেট হলো সেটা নিজে নিজে রাখবে
 		timestamps: true,
 	}
 );
 
+// নকশা থেকে আসল ইউজার মডেল বানানো
 const User = mongoose.model("User", userSchema);
 
+// এই মডেলটাকে অন্য জায়গায় পাঠিয়ে দেওয়া
 export default User;
