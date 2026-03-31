@@ -83,7 +83,7 @@ app.use(cors(corsOptions));
 
 // ============= রেট লিমিটিং (অনেক রিকোয়েস্ট ঠেকায়) =============
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,  // ১৫ মিনিট
+  windowMs: 15 * 60 * 1000, 
   max: process.env.NODE_ENV === "production" ? 100 : 1000,  // প্রতি আইপি থেকে সর্বোচ্চ রিকোয়েস্ট
   message: "Too many requests from this IP, please try again after 15 minutes",
   standardHeaders: true,
