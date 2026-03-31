@@ -151,7 +151,7 @@ const gracefulShutdown = (signal) => {
   server.close(() => {
     console.log("HTTP server closed.");
     
-    // ডাটাবেজ কানেকশন বন্ধ করা
+    // ডাটাবেজ কানেকশন off করা
     import("mongoose").then((mongoose) => {
       mongoose.connection.close(false, () => {
         console.log("MongoDB connection closed.");
