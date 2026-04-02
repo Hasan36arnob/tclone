@@ -234,7 +234,7 @@ const followUnFollowUser = async (req, res) => {
 		// বর্তমান ইউজার (যে ফলো করছে)
 		const currentUser = await User.findById(req.user._id);
 
-		// কেউ নিজেকে ফলো করতে পারে না
+		// কেউ নিজেকে ফলো করতে পারে 
 		if (id === req.user._id.toString())
 			return res.status(400).json({ error: "You cannot follow/unfollow yourself" });
 
