@@ -36,6 +36,7 @@ const sanitizeInput = (input) => {
 
 // ============= ইউজারের প্রোফাইল দেখার ফাংশন =============
 // এই ফাংশন কাজ করে যখন কেউ কারো প্রোফাইল দেখতে চায়
+//when user wants to see anoter user's profile 
 const getUserProfile = async (req, res) => {
 	// URL থেকে ইউজারনেম অথবা আইডি নিচ্ছি
 	const { query } = req.params;
