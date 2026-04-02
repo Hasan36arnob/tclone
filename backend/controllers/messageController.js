@@ -8,6 +8,7 @@ import { getRecipientSocketId, io } from "../socket/socket.js";
 import { v2 as cloudinary } from "cloudinary";
 
 // ============= ইনপুট স্যানিটাইজেশন হেল্পার =============
+//this is for input sanitization
 const sanitizeInput = (input) => {
 	if (typeof input !== 'string') return input;
 	return input.trim().replace(/[<>]/g, '');
