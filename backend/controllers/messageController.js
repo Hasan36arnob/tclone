@@ -16,6 +16,7 @@ const sanitizeInput = (input) => {
 
 // ============= মেসেজ পাঠানোর ফাংশন =============
 // এই ফাংশন কাজ করে যখন কেউ মেসেজ পাঠায়
+//this function works when someone sends message
 async function sendMessage(req, res) {
 	try {
 		// ইউজার যা পাঠিয়েছে সেগুলো নিচ্ছি
