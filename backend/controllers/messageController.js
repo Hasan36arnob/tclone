@@ -86,6 +86,7 @@ async function sendMessage(req, res) {
 		}
 
 		// এখন নতুন মেসেজটা তৈরি করি
+
 		const newMessage = new Message({
 			// এই মেসেজ কোন কথোপকথনের জন্য
 			conversationId: conversation._id,
@@ -129,6 +130,7 @@ async function sendMessage(req, res) {
 
 // ============= মেসেজগুলো দেখার ফাংশন =============
 // এই ফাংশন কাজ করে যখন কেউ পুরনো মেসেজ দেখতে চায়
+//when someone wants to see the old messages
 async function getMessages(req, res) {
 	// URL থেকে অন্য ইউজারের আইডি নিচ্ছি (যার সাথে কথা বলেছিল)
 	const { otherUserId } = req.params;
