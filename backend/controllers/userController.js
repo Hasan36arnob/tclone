@@ -205,6 +205,7 @@ const loginUser = async (req, res) => {
 
 // ============= লগআউট ফাংশন =============
 // এই ফাংশন কাজ করে যখন কেউ লগআউট করে
+//logout user
 const logoutUser = (req, res) => {
 	try {
 		// কুকি খালি করে দেই (টোকেন মুছে ফেলি)
