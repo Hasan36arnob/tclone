@@ -156,6 +156,7 @@ const signupUser = async (req, res) => {
 
 // ============= লগইন ফাংশন =============
 // এই ফাংশন কাজ করে যখন কেউ লগইন করে
+//login user
 const loginUser = async (req, res) => {
 	try {
 		// ইউজারনেম এবং পাসওয়ার্ড নিচ্ছি
