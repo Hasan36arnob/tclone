@@ -120,6 +120,7 @@ const signupUser = async (req, res) => {
 		const hashedPassword = await bcrypt.hash(password, salt);
 
 		// নতুন ইউজার তৈরি করি
+		// create new user
 		const newUser = new User({
 			name,
 			email,
