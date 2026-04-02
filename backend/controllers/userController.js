@@ -12,6 +12,7 @@ import { v2 as cloudinary } from "cloudinary";
 import mongoose from "mongoose";
 
 // ============= ইনপুট ভ্যালিডেশন হেল্পার ফাংশন =============
+//input validation
 const validateEmail = (email) => {
 	const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 	return emailRegex.test(email);
